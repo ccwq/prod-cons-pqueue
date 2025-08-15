@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm test:*)",
+      "Bash(npm test)",
+      "Bash(pnpm vitest --ui)",
+      "Bash(pnpm update:*)"
+    ],
+    "deny": []
+  }
+}
