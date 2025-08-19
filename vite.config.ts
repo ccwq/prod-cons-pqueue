@@ -9,14 +9,19 @@ export default defineConfig({
       fileName: 'index'
     },
     rollupOptions: {
-      external: ['p-queue'],
+      external: [],
       output: {
-        globals: {
-          'p-queue': 'PQueue'
-        }
+        format: 'es'
       }
     },
-    sourcemap: true
+    sourcemap: true,
+    commonjsOptions: {
+      transformMixedEsModules: true
+    }
+  },
+  define: {
+    global: 'globalThis',
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
   },
   resolve: {
     alias: {

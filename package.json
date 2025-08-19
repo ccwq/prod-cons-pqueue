@@ -18,12 +18,12 @@
   ],
   "scripts": {
     "build": "vite build",
+    "build:watch": "nodemon --watch src/index.ts --delay 500ms --exec \"npm run build\"",
     "dev": "vite",
+    "preview": "live-server --host=localhost --port=8080 --open=/example/example.html",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "lint": "eslint src",
-    "type-check": "tsc --noEmit",
-    "prepublishOnly": "npm run build && npm run test && npm run lint"
+    "lint": "eslint src"
   },
   "keywords": [
     "producer-consumer",
@@ -43,6 +43,8 @@
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "eslint": "^8.56.0",
+    "live-server": "^1.2.2",
+    "nodemon": "^3.1.10",
     "typescript": "^5.3.3",
     "vite": "^5.0.0",
     "vitest": "^3.2.4"
