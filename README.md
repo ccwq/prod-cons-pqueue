@@ -10,6 +10,7 @@
 - 🛡️ **错误处理**: 完善的错误处理和恢复机制
 - 📊 **统计信息**: 提供详细的运行状态统计
 - 🎨 **TypeScript 支持**: 完整的类型定义和开发体验
+- ⏱️ **等待机制**: 支持等待特定事件和缓冲区清空
 
 ## 安装
 
@@ -78,6 +79,15 @@ console.log(prodCons.getStats());
 //   pendingJobs: 2,
 //   isPaused: false
 // }
+
+// 等待特定事件
+await prodCons.waitForEvent('blocked-state-change', (value) => value === true);
+
+// 等待缓冲区清空
+await prodCons.waitForEmpty();
+
+// 等待消费完成
+await prodCons.waitForConsumption();
 
 // 批量生产数据
 const batchProduce = async () => {
@@ -199,6 +209,21 @@ interface Stats {
 }
 ```
 
+### 等待方法
+
+#### `waitForEmpty(): Promise<void>`
+等待缓冲区完全清空。
+
+#### `waitForConsumption(): Promise<void>`
+等待当前所有消费操作完成。
+
+#### `waitForEvent(eventName: string, condition?: (value: any) => boolean): Promise<any>`
+等待特定事件触发，可选择性地设置条件过滤。
+
+**参数:**
+- `eventName`: 事件名称
+- `condition`: 可选的条件函数，只有满足条件的事件才会被 resolve
+
 ### 事件监听
 
 #### 事件类型
@@ -228,6 +253,7 @@ interface Stats {
 3. **并发控制**: 合理设置 `concurrency` 参数以平衡性能和资源使用
 4. **生产速度**: 当生产速度远大于消费速度时，缓冲区会被填满并进入阻塞状态
 5. **资源清理**: 在应用退出前，确保调用 `destroy()` 方法
+6. **事件等待**: 使用 `waitForEvent` 可以实现更精确的流程控制
 
 ## 使用场景
 
@@ -300,6 +326,33 @@ for (let i = 0; i < 1000; i++) {
 }
 ```
 
+### 4. 事件驱动流程控制
+
+```javascript
+const eventProcessor = new ProdConsPQueue({ 
+  slotAmount: 10,
+  concurrency: 3 
+});
+
+// 等待特定条件的事件
+eventProcessor.on('blocked-state-change', (isBlocked) => {
+  console.log(`队列状态: ${isBlocked ? '阻塞' : '运行中'}`);
+});
+
+// 设置消费者
+eventProcessor.consume(async (data) => {
+  console.log('处理数据:', data);
+  await process(data);
+});
+
+// 生产数据并等待处理完成
+await eventProcessor.produce(async () => generateData());
+await eventProcessor.waitForEmpty(); // 等待所有数据处理完成
+
+// 或者等待特定事件
+await eventProcessor.waitForEvent('blocked-state-change', (value) => value === false);
+```
+
 ## 开发和测试
 
 ### 本地开发
@@ -316,6 +369,9 @@ npm run test
 
 # 运行测试覆盖率
 npm run test:coverage
+
+# 运行测试UI界面
+npm run test:ui
 
 # 代码检查
 npm run lint
@@ -356,3 +412,7 @@ MIT License
 - 事件驱动架构
 - 完整的 TypeScript 支持
 - 全面的测试覆盖
+- 新增等待机制：`waitForEmpty`、`waitForConsumption`、`waitForEvent`
+- 新增控制功能：`pause`、`start`、`clear`
+- 新增统计信息功能
+- 完善的错误处理和资源管理
