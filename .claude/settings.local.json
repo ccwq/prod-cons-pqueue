@@ -6,7 +6,11 @@
       "Bash(pnpm test:*)",
       "Bash(npm test)",
       "Bash(pnpm vitest --ui)",
-      "Bash(pnpm update:*)"
+      "Bash(pnpm update:*)",
+      "Bash(npm run build:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm add:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
