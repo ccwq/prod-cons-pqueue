@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>槽位进度条测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .produce-btn {
+            background: #4CAF50;
+            color: white;
+        }
+        .clear-btn {
+            background: #f44336;
+            color: white;
+        }
+        .slots-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .slot {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .slot.available {
+            background: #4CAF50;
+        }
+        .slot.busy {
+            background: #f44336;
+        }
+        .slot-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.7);
+            border-radius: 0 0 6px 6px;
+            transition: height 0.1s ease;
+        }
+        .status {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+        }
+        .log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .log-item {
+            padding: 5px;
+            margin: 2px 0;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .log-produce {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        .log-consume {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>槽位进度条测试</h1>
+        
+        <div class="controls">
+            <button id="produceBtn" class="produce-btn">生产事件</button>
+            <button id="clearBtn" class="clear-btn">清空</button>
+        </div>
+
+        <div class="status">
+            <div>等待队列: <span id="waitingCount">0</span></div>
+            <div>正在消费: <span id="consumingCount">0</span></div>
+        </div>
+
+        <div class="slots-container" id="slotsContainer">
+            <!-- 槽位将通过JavaScript动态生成 -->
+        </div>
+
+        <div class="log" id="logContainer">
+            <!-- 日志将通过JavaScript动态生成 -->
+        </div>
+    </div>
+
+    <script type="module">
+        import ProdConsPQueue from './dist/index.js';
+
+        // 槽位状态管理
+        const slotAmount = 5;
+        const slotStates = [];
+        const consumingSlots = new Set();
+        const waitingSlots = [];
+        
+        // DOM元素
+        const slotsContainer = document.getElementById('slotsContainer');
+        const produceBtn = document.getElementById('produceBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const waitingCountEl = document.getElementById('waitingCount');
+        const consumingCountEl = document.getElementById('consumingCount');
+        const logContainer = document.getElementById('logContainer');
+
+        // 初始化槽位
+        function initSlots() {
+            slotsContainer.innerHTML = '';
+            slotStates.length = 0;
+            consumingSlots.clear();
+            waitingSlots.length = 0;
+            
+            for (let i = 0; i < slotAmount; i++) {
+                slotStates.push({
+                    status: 'available',
+                    progress: 0,
+                    timeout: null
+                });
+                
+                const slot = document.createElement('div');
+                slot.className = 'slot available';
+                slot.id = `slot-${i}`;
+                
+                const progress = document.createElement('div');
+                progress.className = 'slot-progress';
+                progress.style.height = '0%';
+                slot.appendChild(progress);
+                
+                slotsContainer.appendChild(slot);
+            }
+            updateStatus();
+        }
+
+        // 更新状态显示
+        function updateStatus() {
+            waitingCountEl.textContent = waitingSlots.length;
+            consumingCountEl.textContent = consumingSlots.size;
+        }
+
+        // 添加日志
+        function addLog(message, type = 'info') {
+            const logItem = document.createElement('div');
+            logItem.className = `log-item log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            logItem.textContent = `[${time}] ${message}`;
+            logContainer.insertBefore(logItem, logContainer.firstChild);
+            
+            // 保持最多20条日志
+            while (logContainer.children.length > 20) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        // 更新槽位状态
+        function updateSlotStatus(slotIndex, status, progress = 0) {
+            if (slotIndex < 0 || slotIndex >= slotAmount) return;
+            
+            const slot = document.getElementById(`slot-${slotIndex}`);
+            const slotState = slotStates[slotIndex];
+            
+            // 清除之前的超时
+            if (slotState.timeout) {
+                clearTimeout(slotState.timeout);
+                slotState.timeout = null;
+            }
+            
+            slotState.status = status;
+            slotState.progress = progress;
+            
+            // 更新槽位外观
+            slot.className = `slot ${status}`;
+            
+            const progressEl = slot.querySelector('.slot-progress');
+            progressEl.style.height = `${progress}%`;
+            
+            // 如果是忙碌状态，添加到等待队列
+            if (status === 'busy') {
+                if (!consumingSlots.has(slotIndex) && !waitingSlots.includes(slotIndex)) {
+                    waitingSlots.push(slotIndex);
+                    addLog(`槽位 ${slotIndex + 1} 加入等待队列`, 'produce');
+                    startNextConsumption();
+                }
+            }
+            
+            // 如果是可用状态，从集合中移除
+            if (status === 'available') {
+                consumingSlots.delete(slotIndex);
+            }
+            
+            updateStatus();
+        }
+
+        // 开始下一个消费
+        function startNextConsumption() {
+            // 如果已经有槽位在消费，或者没有等待的槽位，则不启动新的
+            if (consumingSlots.size >= 1 || waitingSlots.length === 0) {
+                return;
+            }
+            
+            // 从等待队列中取出第一个槽位
+            const nextSlotIndex = waitingSlots.shift();
+            if (nextSlotIndex !== undefined) {
+                consumingSlots.add(nextSlotIndex);
+                addLog(`槽位 ${nextSlotIndex + 1} 开始消费`, 'consume');
+                startSlotProgressAnimation(nextSlotIndex);
+            }
+            updateStatus();
+        }
+
+        // 开始槽位进度条动画
+        function startSlotProgressAnimation(slotIndex) {
+            const slotState = slotStates[slotIndex];
+            let currentProgress = 100;
+            const decreaseRate = 2; // 每次减少的百分比
+            
+            const animateProgress = () => {
+                currentProgress -= decreaseRate;
+                
+                if (currentProgress <= 0) {
+                    currentProgress = 0;
+                    // 进度条用完，恢复为可用状态
+                    slotState.status = 'available';
+                    const slot = document.getElementById(`slot-${slotIndex}`);
+                    slot.className = 'slot available';
+                    const progressEl = slot.querySelector('.slot-progress');
+                    progressEl.style.height = '0%';
+                    consumingSlots.delete(slotIndex);
+                    addLog(`槽位 ${slotIndex + 1} 消费完成`, 'consume');
+                    
+                    // 启动下一个等待的槽位
+                    startNextConsumption();
+                } else {
+                    const progressEl = document.getElementById(`slot-${slotIndex}`).querySelector('.slot-progress');
+                    progressEl.style.height = `${currentProgress}%`;
+                    slotState.timeout = setTimeout(animateProgress, 50);
+                }
+                updateStatus();
+            };
+            
+            animateProgress();
+        }
+
+        // 获取可用槽位索引
+        function getAvailableSlotIndex() {
+            for (let i = 0; i < slotAmount; i++) {
+                if (slotStates[i].status === 'available') {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        // 生产事件
+        produceBtn.addEventListener('click', () => {
+            const availableSlotIndex = getAvailableSlotIndex();
+            if (availableSlotIndex !== -1) {
+                updateSlotStatus(availableSlotIndex, 'busy', 100);
+                addLog(`生产事件 - 使用槽位 ${availableSlotIndex + 1}`, 'produce');
+            } else {
+                addLog('生产事件 - 没有可用槽位', 'produce');
+            }
+        });
+
+        // 清空事件
+        clearBtn.addEventListener('click', () => {
+            consumingSlots.clear();
+            waitingSlots.length = 0;
+            
+            // 重置所有槽位状态
+            for (let i = 0; i < slotAmount; i++) {
+                if (slotStates[i].timeout) {
+                    clearTimeout(slotStates[i].timeout);
+                    slotStates[i].timeout = null;
+                }
+                updateSlotStatus(i, 'available', 0);
+            }
+            
+            addLog('所有槽位已重置', 'info');
+        });
+
+        // 初始化
+        initSlots();
+        addLog('测试程序已启动', 'info');
+        addLog('点击"生产事件"按钮测试槽位进度条逻辑', 'info');
+    </script>
+</body>
+</html>

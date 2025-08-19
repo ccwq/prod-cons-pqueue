@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue JSX Syntax in HTML</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="../dist/index.umd.cjs"></script>
+
+</head>
+<body>
+    <div id="app">
+        <TaskBoxContainer> </TaskBoxContainer>
+    </div>
+
+    <script type="text/babel" data-type="module" type="module">
+        /** @jsx Vue.h */
+        const {
+            createApp, ref, reactive, computed, onMounted, watch,
+            h, defineComponent, onErrorCaptured,  Fragment
+        } = Vue;
+        const PPQueue = ProdConsPQueue.ProdConsPQueue
+        const TaskBox = defineComponent({
+            props: {
+                label: {
+                    type: String,
+                },
+            },
+            emits: [
+                "completed",
+                "started",
+            ],
+            setup(props, {expose}){
+
+                onErrorCaptured((err)=>{
+                    console.error("在TaskBox错误", error)
+                })
+
+                const pbarRef = ref(null)
+                const getRandomSenond = (min, max)=>{
+                    return Math.floor(Math.random() * (max - min + 1) + min);
+                }
+                const start = async ()=>{
+                    busying.value = true
+                    console.log("box task start " + props.label);
+                    const duration = getRandomSenond(1, 3);
+                    await gsap.to(pbarRef.value, {height: "100%", duration: duration * 0.05})
+                    await gsap.to(pbarRef.value, {
+                        duration: duration * 0.95,
+                        height:"0%",
+                        ease: "power1.in",
+                    })
+                    busying.value = false
+                }
+
+                const busying = ref(false)
+                onMounted(()=>{
+
+                })
+                expose({
+                    start,
+                    busying,
+                    label: props.label,
+                })
+                return () => <div class="task-box">
+                    <div className="label">{props.label}-{busying.value?'·':''}</div>
+                    <div className="progess-bar" ref={v => pbarRef.value = v}></div>
+                </div>;
+            }
+        })
+
+        const TaskBoxContainer = defineComponent({
+            setup(){
+                onErrorCaptured((err)=>{
+                    console.error("在TaskBoxContainer错误", error)
+                })
+                const boxCount = 6;
+                const arr = Array.from({ length: boxCount }, (_, i) => String(i + 1));
+                const taskCounter = ref(0);
+
+                const boxTaskCompList = ref([]);
+
+                const getFreeBox = ()=>{
+                    return boxTaskCompList.value.find(el => el && (!el.busying));
+                }
+
+                const freeBoxes = computed(() => boxTaskCompList.value.filter(b =>b && !(b.busying)));
+
+
+                watch(freeBoxes, boxLs=>{
+                    console.log("空闲", boxLs.map(el=>el.label));
+                })
+
+
+                // 专门用于UI展示的响应式状态
+                const queueState = reactive({
+                    freeSlots: 0,
+                    bufferLength: 0,
+                    isBlocked: false,
+                    localQueueLength: 0,
+                });
+
+
+                // 创建生产者-消费者实例
+                const prodCons = new PPQueue({
+                    slotAmount: boxCount,  // 缓冲区大小
+                    concurrency: boxCount,   // 消费并发度
+                });
+
+
+                onMounted(() => {
+                    // 初始化UI状态
+                    queueState.freeSlots = prodCons.getFreeSlotAmount();
+                    queueState.bufferLength = prodCons.getBufferLength();
+                    queueState.isBlocked = prodCons.isBlocked();
+                });
+
+                // 监听队列状态变化，并更新UI
+                prodCons.on('free-slot-amount-change', (amount) => {
+                    queueState.freeSlots = amount;
+                    queueState.bufferLength = prodCons.getSlotAmount() - amount;
+
+                    console.log("free-slot-amount-change", amount)
+                });
+
+                prodCons.on('blocked-state-change', (isBlocked) => {
+                    queueState.isBlocked = isBlocked;
+
+                    console.log("is-blobked", isBlocked)
+
+                });
+
+
+                // 设置消费者
+                prodCons.consume(async (data) => {
+                    const box = getFreeBox()
+                    if (box) {
+                        await box.start()
+                    }else{
+                        console.error("没有有用的");
+                    }
+                });
+
+                const handlerProduce = ()=>{
+
+                    taskCounter.value++;
+                    const taskData = `Task-${taskCounter.value}`;
+
+                    console.log(`[Producer] 准备生产: ${taskData}`);
+                    prodCons.produce(async () => {
+                        // 模拟生产任务数据需要一点时间
+                        await new Promise(resolve => setTimeout(resolve, Math.random() * 200));
+                        console.log(`[Producer] 生产完成: ${taskData} -> 放入缓冲区`);
+                        return taskData;
+                    }).catch(err => {
+                        console.error("生产失败:", err);
+                    });
+                }
+
+
+                const handlerProduceMultip = ()=>{
+                    const num = 10;
+                    for (let i = 0; i < num; i++) {
+                        handlerProduce();
+                    }
+                }
+
+                return ()=>(
+                    <Fragment>
+                        <div className="button-list">
+                            <button
+                                onClick={handlerProduce}
+                                disabled={queueState.isBlocked}
+                            >生产</button>
+                            <button
+                                onClick={handlerProduceMultip}
+                                disabled={queueState.isBlocked}
+                            >批量生产</button>
+                        </div>
+                        <div className="task-box-container">
+
+                            {
+                                arr.map(n => {
+                                    return <TaskBox
+                                        key={n}
+                                        label={n}
+                                        ref={(el) => {
+                                            // el 为组件的公共实例或 null（卸载时）
+                                            if (el) boxTaskCompList.value[n] = el;
+                                            else boxTaskCompList.value[n] = null;
+                                        }}
+                                    />
+                                })
+                            }
+                        </div>
+                    </Fragment>
+
+                )
+            }
+        })
+
+        // 创建应用
+        createApp(TaskBoxContainer).mount('#app');
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .task-box-container {
+            --box-size: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+
+            & .task-box {
+                background: dimgray;
+                width: var(--box-size);
+                height: var(--box-size);
+
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+
+                & .label {
+                    position: relative;
+                    z-index: 15;
+                    color: #ffffff;
+                }
+
+                & .progess-bar{
+                    position: absolute;
+                    width: 100%;
+                    height: 50%;
+                    background: #2c5530;
+                    bottom: 0;
+                }
+            }
+        }
+
+    </style>
+</body>
+</html>
