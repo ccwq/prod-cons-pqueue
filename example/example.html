@@ -11,371 +11,1137 @@
 
 </head>
 <body>
-    <div id="app">
-        <TaskBoxContainer> </TaskBoxContainer>
+<div id="app">
+    <TaskBoxContainer></TaskBoxContainer>
+</div>
+
+<!-- 功能说明部分 -->
+<div class="instructions-section">
+    <div class="instructions-container">
+        <div class="instructions-header">
+            <h1 class="instructions-title">生产者-消费者队列演示</h1>
+            <p class="instructions-subtitle">交互式队列管理可视化工具</p>
+        </div>
+        
+        <div class="instructions-content">
+            <div class="instruction-block">
+                <h3 class="block-title">🎯 功能描述</h3>
+                <ul class="feature-list">
+                    <li><strong>生产者-消费者模式：</strong>模拟经典的生产者消费者队列模型</li>
+                    <li><strong>实时状态监控：</strong>动态显示队列状态、任务执行情况</li>
+                    <li><strong>可配置参数：</strong>支持动态调整并发数和缓冲区大小</li>
+                    <li><strong>可视化任务：</strong>通过动画任务框展示任务执行状态</li>
+                    <li><strong>队列重置：</strong>支持重新配置并重置队列状态</li>
+                </ul>
+            </div>
+            
+            <div class="instruction-block">
+                <h3 class="block-title">📖 使用说明</h3>
+                <ol class="usage-steps">
+                    <li>
+                        <strong>调整队列配置：</strong>
+                        <ul>
+                            <li>使用<b>并发数滑块</b>设置同时执行的任务数量（1-12）</li>
+                            <li>使用<b>槽位数滑块</b>设置缓冲区大小（1-12）</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>应用配置：</strong>
+                        <ul>
+                            <li>点击<b>重置队列</b>按钮应用新的配置并重新开始</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>生产任务：</strong>
+                        <ul>
+                            <li>点击<b>生产</b>按钮创建单个任务</li>
+                            <li>点击<b>批量生产</b>按钮创建多个任务（数量=槽位数）</li>
+                        </ul>
+                    </li>
+                    <li>
+                        <strong>观察执行：</strong>
+                        <ul>
+                            <li>黄色圆形代表可用的任务执行槽位</li>
+                            <li>绿色进度条显示任务执行进度</li>
+                            <li>状态面板实时显示队列各项指标</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+            
+            <div class="instruction-block">
+                <h3 class="block-title">🔍 状态说明</h3>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-indicator blocked">阻塞状态</span>
+                        <span class="status-desc">缓冲区已满，无法继续生产任务</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator paused">暂停状态</span>
+                        <span class="status-desc">队列处于暂停状态</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-indicator normal">正常运行</span>
+                        <span class="status-desc">队列正常运行中</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="instruction-block">
+                <h3 class="block-title">💡 提示</h3>
+                <ul class="tips-list">
+                    <li>调整并发数可以控制同时执行的任务数量</li>
+                    <li>调整槽位数可以改变缓冲区容量</li>
+                    <li>当队列阻塞时，等待任务完成后再生产新任务</li>
+                    <li>通过控制台可以查看详细的执行日志</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="instructions-footer">
+            <p class="footer-text">基于 ProdConsPQueue 库构建 | 交互式演示工具</p>
+        </div>
     </div>
+</div>
 
-    <script type="text/babel" data-type="module" type="module">
-        /** @jsx Vue.h */
-        const {
-            createApp, ref, reactive, computed, onMounted, watch,
-            h, defineComponent, onErrorCaptured,  Fragment
-        } = Vue;
-        const PPQueue = ProdConsPQueue.ProdConsPQueue
-        const TaskBox = defineComponent({
-            props: {
-                label: {
-                    type: String,
-                },
+<script type="text/babel" data-type="module" type="module">
+    /** @jsx Vue.h */
+    const {
+        createApp, ref, reactive, computed, onMounted, watch,
+        h, defineComponent, onErrorCaptured, Fragment
+    } = Vue;
+    const PPQueue = ProdConsPQueue.ProdConsPQueue
+    const TaskBox = defineComponent({
+        props: {
+            label: {
+                type: String,
             },
-            emits: [
-                "completed",
-                "started",
-            ],
-            setup(props, {expose}){
+        },
+        emits: [
+            "completed",
+            "started",
+        ],
+        setup(props, {expose}) {
 
-                onErrorCaptured((err)=>{
-                    console.error("在TaskBox错误", error)
-                })
+            onErrorCaptured((err) => {
+                console.error("在TaskBox错误", error)
+            })
 
-                const pbarRef = ref(null)
-                const getRandomSenond = (min, max)=>{
-                    return Math.floor(Math.random() * (max - min + 1) + min);
-                }
-                const start = async ()=>{
-                    busying.value = true
-                    console.log("box task start " + props.label);
-                    const duration = getRandomSenond(1, 3);
-                    await gsap.to(pbarRef.value, {height: "100%", duration: duration * 0.04})
-                    await gsap.to(pbarRef.value, duration * 0.96, {
-                        height: "0%",
-                        ease: "power1.inOut",
-                    });
-                    busying.value = false
-                }
-
-                const busying = ref(false)
-                onMounted(()=>{
-
-                })
-                expose({
-                    start,
-                    busying,
-                    label: props.label,
-                })
-                return () => <div class="task-box">
-                    <div className="label">{props.label}-{busying.value?'·':''}</div>
-                    <div className="progess-bar" ref={v => pbarRef.value = v}></div>
-                </div>;
+            const pbarRef = ref(null)
+            const getRandomSenond = (min, max) => {
+                return Math.floor(Math.random() * (max - min + 1) + min);
             }
-        })
+            const start = async() => {
+                busying.value = true
+                console.log("box task start " + props.label);
+                const duration = getRandomSenond(5, 6);
+                await gsap.to(pbarRef.value, {height: "100%", duration: duration * 0.04})
+                await gsap.to(pbarRef.value, duration * 0.96, {
+                    height: "0%",
+                    ease: "power1.inOut",
+                });
+                busying.value = false
+            }
 
-        const TaskBoxContainer = defineComponent({
-            setup(){
-                onErrorCaptured((err)=>{
-                    console.error("在TaskBoxContainer错误", error)
-                })
-                const boxCount = 6;
-                const arr = Array.from({ length: boxCount }, (_, i) => String(i + 1));
-                const taskCounter = ref(0);
+            const busying = ref(false)
+            onMounted(() => {
 
-                const boxTaskCompList = ref([]);
+            })
+            expose({
+                start,
+                busying,
+                label: props.label,
+            })
+            return () => <div class="task-box">
+                <div className="label">{props.label}{busying.value ? '-' : ''}</div>
+                <div class="progess-bar" ref={v => pbarRef.value = v}></div>
+            </div>;
+        }
+    })
 
-                const getFreeBox = ()=>{
-                    return boxTaskCompList.value.find(el => el && (!el.busying));
+    const StatsDisplay = defineComponent({
+        setup() {
+            const stats = reactive({
+                bufferLength: 0,
+                freeSlotAmount: 0,
+                isBlocked: false,
+                pendingJobs: 0,
+                runningJobs: 0,
+                isPaused: false,
+                consumingJobs: 0,
+                concurrency: 0,
+                slotAmount: 0
+            });
+
+            const updateStats = (newStats) => {
+                console.log('更新状态:', newStats);
+                stats.bufferLength = newStats.bufferLength;
+                stats.freeSlotAmount = newStats.freeSlotAmount;
+                stats.isBlocked = newStats.isBlocked;
+                stats.pendingJobs = newStats.pendingJobs;
+                stats.runningJobs = newStats.runningJobs;
+                stats.isPaused = newStats.isPaused;
+                stats.consumingJobs = newStats.consumingJobs;
+                stats.concurrency = newStats.concurrency;
+                stats.slotAmount = newStats.slotAmount;
+            };
+
+            return {stats, updateStats};
+        },
+        render() {
+            const {stats} = this;
+            return (
+                <div className="stats-display">
+                    <div className="stats-title">队列状态</div>
+                    <div className="stats-grid">
+                        <div className="stat-item">
+                            <span className="stat-label">缓冲区长度:</span>
+                            <span className="stat-value">{stats.bufferLength}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">空闲槽位:</span>
+                            <span className="stat-value">{stats.freeSlotAmount}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">阻塞状态:</span>
+                            <span className={`stat-value ${stats.isBlocked ? 'blocked' : ''}`}>
+                                    {stats.isBlocked ? '是' : '否'}
+                                </span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">等待任务:</span>
+                            <span className="stat-value">{stats.pendingJobs}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">运行任务:</span>
+                            <span className="stat-value">{stats.runningJobs}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">暂停状态:</span>
+                            <span className={`stat-value ${stats.isPaused ? 'paused' : ''}`}>
+                                    {stats.isPaused ? '是' : '否'}
+                                </span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">消费项目:</span>
+                            <span className="stat-value">{stats.consumingJobs}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">并发数:</span>
+                            <span className="stat-value">{stats.concurrency}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span className="stat-label">槽位总数:</span>
+                            <span className="stat-value">{stats.slotAmount}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+    });
+
+    const TaskBoxContainer = defineComponent({
+        setup() {
+            const statsDisplayRef = ref(null);
+            onErrorCaptured((err) => {
+                console.error("在TaskBoxContainer错误", error)
+            })
+            
+            // 配置状态
+            const config = reactive({
+                concurrency: 6,
+                slotAmount: 6
+            });
+            
+            // 临时配置状态（用于滑块调整）
+            const tempConfig = reactive({
+                concurrency: 6,
+                slotAmount: 6
+            });
+            
+            const boxCount = computed(() => config.slotAmount);
+            const arr = computed(() => Array.from({length: boxCount.value}, (_, i) => String(i + 1)));
+            const taskCounter = ref(0);
+
+            const boxTaskCompList = ref([]);
+
+            const getFreeBox = () => {
+                return boxTaskCompList.value.find(el => el && (!el.busying));
+            }
+
+            const freeBoxes = computed(() => boxTaskCompList.value.filter(b => b && !(b.busying)));
+
+
+            watch(freeBoxes, boxLs => {
+                console.log("空闲", boxLs.map(el => el.label));
+            })
+
+
+            // 专门用于UI展示的响应式状态
+            const queueState = reactive({
+                freeSlots: 0,
+                bufferLength: 0,
+                isBlocked: false,
+                localQueueLength: 0,
+            });
+
+
+            // 生产者-消费者实例
+            let prodCons = null;
+
+            // 初始化队列
+            const initQueue = () => {
+                if (prodCons) {
+                    // 尝试清理旧的事件监听器
+                    try {
+                        if (typeof prodCons.removeAllListeners === 'function') {
+                            prodCons.removeAllListeners();
+                        } else if (typeof prodCons.off === 'function') {
+                            // 如果没有removeAllListeners，尝试移除已知的事件
+                            prodCons.off('free-slot-amount-change');
+                            prodCons.off('blocked-state-change');
+                            prodCons.off('buffer-length-change');
+                            prodCons.off('pending-jobs-change');
+                            prodCons.off('running-jobs-change');
+                            prodCons.off('paused-state-change');
+                            prodCons.off('consuming-items-change');
+                        }
+                    } catch (e) {
+                        console.warn('清理事件监听器失败:', e);
+                    }
                 }
-
-                const freeBoxes = computed(() => boxTaskCompList.value.filter(b =>b && !(b.busying)));
-
-
-                watch(freeBoxes, boxLs=>{
-                    console.log("空闲", boxLs.map(el=>el.label));
-                })
-
-
-                // 专门用于UI展示的响应式状态
-                const queueState = reactive({
-                    freeSlots: 0,
-                    bufferLength: 0,
-                    isBlocked: false,
-                    localQueueLength: 0,
+                
+                prodCons = new PPQueue({
+                    slotAmount: config.slotAmount,
+                    concurrency: config.concurrency,
                 });
-
-
-                // 创建生产者-消费者实例
-                const prodCons = new PPQueue({
-                    slotAmount: boxCount,  // 缓冲区大小
-                    concurrency: boxCount,   // 消费并发度
+                
+                console.log(`创建新队列: 槽位数=${config.slotAmount}, 并发数=${config.concurrency}`);
+                
+                // 设置消费者
+                prodCons.consume(async(data) => {
+                    const box = getFreeBox()
+                    if (box) {
+                        await box.start()
+                    } else {
+                        console.error("没有可用的任务框");
+                    }
                 });
+                
+                setupEventListeners();
+                updateAllStats();
+            };
 
-
-                onMounted(() => {
-                    // 初始化UI状态
-                    queueState.freeSlots = prodCons.getFreeSlotAmount();
-                    queueState.bufferLength = prodCons.getBufferLength();
-                    queueState.isBlocked = prodCons.isBlocked();
-                });
-
-                // 监听队列状态变化，并更新UI
+            // 设置事件监听器
+            const setupEventListeners = () => {
                 prodCons.on('free-slot-amount-change', (amount) => {
                     queueState.freeSlots = amount;
                     queueState.bufferLength = prodCons.getSlotAmount() - amount;
-
                     console.log("free-slot-amount-change", amount)
+                    updateAllStats();
                 });
 
                 prodCons.on('blocked-state-change', (isBlocked) => {
                     queueState.isBlocked = isBlocked;
-
                     console.log("is-blobked", isBlocked)
-
+                    updateAllStats();
                 });
 
-
-                // 设置消费者
-                prodCons.consume(async (data) => {
-                    const box = getFreeBox()
-                    if (box) {
-                        await box.start()
-                    }else{
-                        console.error("没有有用的");
-                    }
+                // 添加所有可能的状态变化监听器
+                prodCons.on('buffer-length-change', () => {
+                    console.log("buffer-length-change");
+                    updateAllStats();
                 });
 
-                const handlerProduce = ()=>{
+                prodCons.on('pending-jobs-change', () => {
+                    console.log("pending-jobs-change");
+                    updateAllStats();
+                });
 
-                    taskCounter.value++;
-                    const taskData = `Task-${taskCounter.value}`;
+                prodCons.on('running-jobs-change', () => {
+                    console.log("running-jobs-change");
+                    updateAllStats();
+                });
 
-                    console.log(`[Producer] 准备生产: ${taskData}`);
-                    prodCons.produce(async () => {
-                        // 模拟生产任务数据需要一点时间
-                        await new Promise(resolve => setTimeout(resolve, Math.random() * 200));
-                        console.log(`[Producer] 生产完成: ${taskData} -> 放入缓冲区`);
-                        return taskData;
-                    }).catch(err => {
-                        console.error("生产失败:", err);
-                    });
-                }
+                prodCons.on('paused-state-change', (isPaused) => {
+                    console.log("paused-state-change", isPaused);
+                    updateAllStats();
+                });
 
+                prodCons.on('consuming-items-change', () => {
+                    console.log("consuming-items-change");
+                    updateAllStats();
+                });
+            };
 
-                const handlerProduceMultip = ()=>{
-                    const num = 10;
-                    for (let i = 0; i < num; i++) {
-                        handlerProduce();
+            // 重置功能
+            const resetQueue = () => {
+                // 应用临时配置
+                config.concurrency = tempConfig.concurrency;
+                config.slotAmount = tempConfig.slotAmount;
+                
+                // 重置任务计数器
+                taskCounter.value = 0;
+                
+                // 清空任务框列表
+                boxTaskCompList.value = [];
+                
+                // 重新初始化队列
+                initQueue();
+                
+                console.log(`队列已重置: 并发数=${config.concurrency}, 槽位数=${config.slotAmount}`);
+                
+                // 延迟验证队列状态
+                setTimeout(() => {
+                    if (prodCons) {
+                        const stats = prodCons.getStats();
+                        console.log('重置后队列状态:', stats);
+                        console.log('预期并发数:', config.concurrency, '实际并发数:', stats.concurrency);
+                        console.log('预期槽位数:', config.slotAmount, '实际槽位数:', stats.slotAmount);
                     }
+                }, 100);
+            };
+
+
+            // 监听队列状态变化，并更新UI
+            const updateAllStats = () => {
+                if (!prodCons) return;
+                const stat = prodCons.getStats();
+                console.table(stat);
+                if (statsDisplayRef.value && typeof statsDisplayRef.value.updateStats === 'function') {
+                    statsDisplayRef.value.updateStats(stat);
                 }
+            };
 
-                return ()=>(
-                    <Fragment>
-                        <div className="button-list">
-                            <button
-                                onClick={handlerProduce}
-                                disabled={queueState.isBlocked}
-                            >生产</button>
-                            <button
-                                onClick={handlerProduceMultip}
-                                disabled={queueState.isBlocked}
-                            >批量生产</button>
-                        </div>
-                        <div className="task-box-container">
+            onMounted(() => {
+                // 初始化队列
+                initQueue();
 
-                            {
-                                arr.map(n => {
-                                    return <TaskBox
-                                        key={n}
-                                        label={n}
-                                        ref={(el) => {
-                                            // el 为组件的公共实例或 null（卸载时）
-                                            if (el) boxTaskCompList.value[n] = el;
-                                            else boxTaskCompList.value[n] = null;
-                                        }}
-                                    />
-                                })
-                            }
-                        </div>
-                    </Fragment>
+                // 延迟初始化状态显示，确保组件完全挂载
+                setTimeout(() => {
+                    updateAllStats();
+                }, 100);
+                
+                // 定期更新状态，以防遗漏某些变化
+                setInterval(updateAllStats, 500);
+            });
 
-                )
+            const handlerProduce = () => {
+
+                taskCounter.value++;
+                const taskData = `Task-${taskCounter.value}`;
+
+                console.log(`[Producer] 准备生产: ${taskData}`);
+                prodCons.produce(async() => {
+                    // 模拟生产任务数据需要一点时间
+                    await new Promise(resolve => setTimeout(resolve, Math.random() * 200));
+                    console.log(`[Producer] 生产完成: ${taskData} -> 放入缓冲区`);
+                    return taskData;
+                }).catch(err => {
+                    console.error("生产失败:", err);
+                });
             }
-        })
 
-        // 创建应用
-        createApp(TaskBoxContainer).mount('#app');
-    </script>
 
-    <style>
-        body {
-            font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f7f3f0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            const handlerProduceMultip = () => {
+                const num = boxCount.value;
+                console.log(`批量生产 ${num} 个任务`);
+                for (let i = 0; i < num; i++) {
+                    handlerProduce();
+                }
+            }
+
+            return () => (
+                <Fragment>
+                    <StatsDisplay ref={v => statsDisplayRef.value = v}/>
+                    
+                    {/* 控制面板 */}
+                    <div className="control-panel">
+                        <div className="control-title">队列配置</div>
+                        <div className="control-grid">
+                            <div className="control-item">
+                                <label className="control-label">
+                                    并发数: {tempConfig.concurrency}
+                                </label>
+                                <input 
+                                    type="range" 
+                                    min="1" 
+                                    max="12" 
+                                    value={tempConfig.concurrency}
+                                    onInput={(e) => tempConfig.concurrency = parseInt(e.target.value)}
+                                    className="control-slider"
+                                />
+                            </div>
+                            <div className="control-item">
+                                <label className="control-label">
+                                    槽位数: {tempConfig.slotAmount}
+                                </label>
+                                <input 
+                                    type="range" 
+                                    min="1" 
+                                    max="12" 
+                                    value={tempConfig.slotAmount}
+                                    onInput={(e) => tempConfig.slotAmount = parseInt(e.target.value)}
+                                    className="control-slider"
+                                />
+                            </div>
+                        </div>
+                        <div className="control-actions">
+                            <button
+                                onClick={resetQueue}
+                                className="reset-button"
+                            >
+                                重置队列
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="button-list">
+                        <button
+                            onClick={handlerProduce}
+                            disabled={queueState.isBlocked}
+                        >生产
+                        </button>
+                        <button
+                            onClick={handlerProduceMultip}
+                            disabled={queueState.isBlocked}
+                        >批量生产
+                        </button>
+                    </div>
+                    <div className="task-box-container">
+
+                        {
+                            arr.value.map(n => {
+                                return <TaskBox
+                                    key={n}
+                                    label={n}
+                                    ref={(el) => {
+                                        // el 为组件的公共实例或 null（卸载时）
+                                        if (el) boxTaskCompList.value[n] = el;
+                                        else boxTaskCompList.value[n] = null;
+                                    }}
+                                />
+                            })
+                        }
+                    </div>
+                </Fragment>
+
+            )
+        }
+    })
+
+    // 创建应用
+    createApp(TaskBoxContainer).mount('#app');
+</script>
+
+<style>
+    body {
+        font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f7f3f0;
+        min-height: 100vh;
+        position: relative;
+    }
+
+    body::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: radial-gradient(circle at 20% 30%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(78, 205, 196, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .button-list {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+        justify-content: center;
+        position: relative;
+        z-index: 1;
+    }
+
+    button {
+        padding: 12px 24px;
+        border: 2px solid #333;
+        border-radius: 8px;
+        background: #fff;
+        color: #333;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        box-shadow: 2px 2px 0 #ccc,
+        4px 4px 0 #bbb;
+        transform: rotate(-0.5deg);
+        font-family: inherit;
+        min-width: 80px;
+    }
+
+    button:hover:not(:disabled) {
+        transform: translateY(-2px) rotate(-0.3deg);
+        box-shadow: 4px 4px 0 #ccc,
+        6px 6px 0 #bbb;
+        background: #f0f0f0;
+    }
+
+    button:active:not(:disabled) {
+        transform: translateY(2px) rotate(0.5deg);
+        box-shadow: 1px 1px 0 #ccc,
+        2px 2px 0 #bbb;
+    }
+
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 1px 1px 0 #ccc,
+        2px 2px 0 #bbb;
+        background: #f5f5f5;
+    }
+
+    .task-box-container {
+        --box-size: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        flex-wrap: wrap;
+        padding: 25px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .task-box-container::before {
+        content: '';
+        position: absolute;
+        top: -5px;
+        left: -5px;
+        right: -5px;
+        bottom: -5px;
+        background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255, 107, 107, 0.1) 10px,
+                rgba(255, 107, 107, 0.1) 20px
+        );
+        border-radius: 12px;
+        z-index: -1;
+    }
+
+    .task-box {
+        background: #ffeb3b;
+        width: var(--box-size);
+        height: var(--box-size);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 3px 3px 0 #ccc,
+        5px 5px 0 #bbb;
+        transition: all 0.2s ease;
+        border: 3px solid #333;
+        transform: rotate(0.3deg);
+
+        &:hover {
+            transform: translateY(-2px) rotate(-0.2deg);
+            box-shadow: 5px 5px 0 #ccc,
+            7px 7px 0 #bbb;
+        }
+
+        & .label {
             position: relative;
-        }
-
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image:
-                radial-gradient(circle at 20% 30%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(78, 205, 196, 0.1) 0%, transparent 50%);
-            pointer-events: none;
-        }
-
-        .button-list {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 32px;
-            flex-wrap: wrap;
-            justify-content: center;
-            position: relative;
-            z-index: 1;
-        }
-
-        button {
-            padding: 12px 24px;
-            border: 2px solid #333;
-            border-radius: 8px;
-            background: #fff;
+            z-index: 15;
             color: #333;
-            font-size: 18px;
             font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-            box-shadow:
-                2px 2px 0 #ccc,
-                4px 4px 0 #bbb;
-            transform: rotate(-0.5deg);
+            font-size: 20px;
+            text-shadow: 1px 1px 0 #fff;
             font-family: inherit;
-            min-width: 80px;
         }
 
-        button:hover:not(:disabled) {
-            transform: translateY(-2px) rotate(-0.3deg);
-            box-shadow:
-                4px 4px 0 #ccc,
-                6px 6px 0 #bbb;
-            background: #f0f0f0;
-        }
-
-        button:active:not(:disabled) {
-            transform: translateY(2px) rotate(0.5deg);
-            box-shadow:
-                1px 1px 0 #ccc,
-                2px 2px 0 #bbb;
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow:
-                1px 1px 0 #ccc,
-                2px 2px 0 #bbb;
-            background: #f5f5f5;
-        }
-
-        .task-box-container {
-            --box-size: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            flex-wrap: wrap;
-            padding: 25px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .task-box-container::before {
-            content: '';
+        & .progess-bar {
             position: absolute;
-            top: -5px;
-            left: -5px;
-            right: -5px;
-            bottom: -5px;
-            background:
-                repeating-linear-gradient(
-                    45deg,
-                    transparent,
-                    transparent 10px,
-                    rgba(255, 107, 107, 0.1) 10px,
-                    rgba(255, 107, 107, 0.1) 20px
-                );
-            border-radius: 12px;
-            z-index: -1;
+            width: 100%;
+            height: 50%;
+            background: #4caf50;
+            bottom: 0;
+            border-radius: 0 0 50% 50%;
+            /*transition: height 0.3s ease;*/
+            border: 2px solid #333;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+    }
+
+    .task-box:nth-child(even) {
+        transform: rotate(-0.2deg);
+    }
+
+    .task-box:nth-child(3n) {
+        transform: rotate(0.4deg);
+    }
+
+    .task-box:nth-child(5n) {
+        transform: rotate(-0.3deg);
+    }
+
+    .stats-display {
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid #333;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+        box-shadow: 3px 3px 0 #ccc,
+        5px 5px 0 #bbb;
+        position: relative;
+        z-index: 1;
+        backdrop-filter: blur(10px);
+    }
+
+    .stats-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 12px;
+        text-align: center;
+        text-shadow: 1px 1px 0 #fff;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        font-size: 14px;
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        background: rgba(255, 235, 59, 0.2);
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+
+    .stat-label {
+        font-weight: 600;
+        color: #555;
+    }
+
+    .stat-value {
+        font-weight: bold;
+        color: #333;
+        min-width: 30px;
+        text-align: right;
+    }
+
+    .stat-value.blocked {
+        color: #f44336;
+        font-weight: bold;
+    }
+
+    .stat-value.paused {
+        color: #ff9800;
+        font-weight: bold;
+    }
+
+    /* 控制面板样式 */
+    .control-panel {
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid #333;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+        box-shadow: 3px 3px 0 #ccc,
+        5px 5px 0 #bbb;
+        position: relative;
+        z-index: 1;
+        backdrop-filter: blur(10px);
+    }
+
+    .control-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 12px;
+        text-align: center;
+        text-shadow: 1px 1px 0 #fff;
+    }
+
+    .control-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .control-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .control-label {
+        font-weight: 600;
+        color: #555;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    .control-slider {
+        width: 100%;
+        height: 6px;
+        border-radius: 3px;
+        background: #ddd;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        cursor: pointer;
+    }
+
+    .control-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #4caf50;
+        cursor: pointer;
+        border: 2px solid #333;
+        box-shadow: 2px 2px 0 #ccc;
+    }
+
+    .control-slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #4caf50;
+        cursor: pointer;
+        border: 2px solid #333;
+        box-shadow: 2px 2px 0 #ccc;
+    }
+
+    .control-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    .reset-button {
+        padding: 10px 20px;
+        border: 2px solid #333;
+        border-radius: 6px;
+        background: #ff9800;
+        color: #333;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        box-shadow: 2px 2px 0 #ccc,
+        4px 4px 0 #bbb;
+        transform: rotate(-0.5deg);
+        font-family: inherit;
+    }
+
+    .reset-button:hover {
+        transform: translateY(-2px) rotate(-0.3deg);
+        box-shadow: 4px 4px 0 #ccc,
+        6px 6px 0 #bbb;
+        background: #f57c00;
+    }
+
+    .reset-button:active {
+        transform: translateY(2px) rotate(0.5deg);
+        box-shadow: 1px 1px 0 #ccc,
+        2px 2px 0 #bbb;
+    }
+
+    @media (max-width: 768px) {
+        .control-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* 功能说明部分样式 */
+    .instructions-section {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 235, 59, 0.1) 100%);
+        border-bottom: 3px solid #333;
+        padding: 40px 20px;
+        margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .instructions-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+            radial-gradient(circle at 20% 20%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, rgba(78, 205, 196, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .instructions-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+    }
+
+    .instructions-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .instructions-title {
+        font-size: 2.5em;
+        color: #333;
+        margin: 0 0 10px 0;
+        text-shadow: 2px 2px 0 #ccc, 4px 4px 0 #bbb;
+        transform: rotate(-0.5deg);
+    }
+
+    .instructions-subtitle {
+        font-size: 1.2em;
+        color: #666;
+        margin: 0;
+        text-shadow: 1px 1px 0 #fff;
+    }
+
+    .instructions-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+
+    .instruction-block {
+        background: rgba(255, 255, 255, 0.9);
+        border: 2px solid #333;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 3px 3px 0 #ccc, 6px 6px 0 #bbb;
+        transform: rotate(-0.3deg);
+        transition: all 0.3s ease;
+    }
+
+    .instruction-block:hover {
+        transform: translateY(-2px) rotate(-0.1deg);
+        box-shadow: 5px 5px 0 #ccc, 8px 8px 0 #bbb;
+    }
+
+    .instruction-block:nth-child(even) {
+        transform: rotate(0.3deg);
+    }
+
+    .instruction-block:nth-child(even):hover {
+        transform: translateY(-2px) rotate(0.1deg);
+    }
+
+    .block-title {
+        font-size: 1.3em;
+        color: #333;
+        margin: 0 0 15px 0;
+        text-align: center;
+        text-shadow: 1px 1px 0 #fff;
+    }
+
+    .feature-list, .tips-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .feature-list li, .tips-list li {
+        background: rgba(255, 235, 59, 0.2);
+        margin-bottom: 8px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border-left: 4px solid #4caf50;
+        font-size: 0.95em;
+        line-height: 1.4;
+    }
+
+    .usage-steps {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        counter-reset: step-counter;
+    }
+
+    .usage-steps li {
+        counter-increment: step-counter;
+        background: rgba(255, 235, 59, 0.2);
+        margin-bottom: 12px;
+        padding: 12px;
+        border-radius: 6px;
+        border-left: 4px solid #ff9800;
+        position: relative;
+    }
+
+    .usage-steps li::before {
+        content: counter(step-counter);
+        position: absolute;
+        left: -15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #ff9800;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.8em;
+        border: 2px solid #333;
+    }
+
+    .usage-steps ul {
+        list-style: none;
+        padding: 0;
+        margin: 8px 0 0 0;
+    }
+
+    .usage-steps ul li {
+        margin-bottom: 6px;
+        padding: 6px 8px;
+        border-left: 2px solid #ddd;
+        background: rgba(255, 255, 255, 0.5);
+        font-size: 0.9em;
+    }
+
+    .usage-steps ul li::before {
+        display: none;
+    }
+
+    .status-grid {
+        display: grid;
+        gap: 12px;
+    }
+
+    .status-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 6px;
+        border-left: 3px solid #ddd;
+    }
+
+    .status-indicator {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        font-weight: bold;
+        border: 1px solid #333;
+        min-width: 80px;
+        text-align: center;
+    }
+
+    .status-indicator.blocked {
+        background: #ffebee;
+        color: #f44336;
+    }
+
+    .status-indicator.paused {
+        background: #fff3e0;
+        color: #ff9800;
+    }
+
+    .status-indicator.normal {
+        background: #e8f5e8;
+        color: #4caf50;
+    }
+
+    .status-desc {
+        font-size: 0.9em;
+        color: #666;
+        flex: 1;
+    }
+
+    .instructions-footer {
+        text-align: center;
+        padding-top: 20px;
+        border-top: 2px solid #ddd;
+    }
+
+    .footer-text {
+        color: #666;
+        font-size: 0.9em;
+        margin: 0;
+        text-shadow: 1px 1px 0 #fff;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .instructions-section {
+            padding: 20px 15px;
+            margin-bottom: 20px;
         }
 
-        .task-box {
-            background: #ffeb3b;
-            width: var(--box-size);
-            height: var(--box-size);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-            box-shadow:
-                3px 3px 0 #ccc,
-                5px 5px 0 #bbb;
-            transition: all 0.2s ease;
-            border: 3px solid #333;
-            transform: rotate(0.3deg);
-
-            &:hover {
-                transform: translateY(-2px) rotate(-0.2deg);
-                box-shadow:
-                    5px 5px 0 #ccc,
-                    7px 7px 0 #bbb;
-            }
-
-            & .label {
-                position: relative;
-                z-index: 15;
-                color: #333;
-                font-weight: bold;
-                font-size: 20px;
-                text-shadow: 1px 1px 0 #fff;
-                font-family: inherit;
-            }
-
-            & .progess-bar{
-                position: absolute;
-                width: 100%;
-                height: 50%;
-                background: #4caf50;
-                bottom: 0;
-                border-radius: 0 0 50% 50%;
-                /*transition: height 0.3s ease;*/
-                border: 2px solid #333;
-                border-top: none;
-                border-left: none;
-                border-right: none;
-            }
+        .instructions-title {
+            font-size: 2em;
         }
 
-        .task-box:nth-child(even) {
-            transform: rotate(-0.2deg);
+        .instructions-content {
+            grid-template-columns: 1fr;
+            gap: 20px;
         }
 
-        .task-box:nth-child(3n) {
-            transform: rotate(0.4deg);
+        .instruction-block {
+            transform: none;
         }
 
-        .task-box:nth-child(5n) {
-            transform: rotate(-0.3deg);
+        .instruction-block:hover {
+            transform: translateY(-2px);
         }
-    </style>
+
+        .instruction-block:nth-child(even) {
+            transform: none;
+        }
+
+        .instruction-block:nth-child(even):hover {
+            transform: translateY(-2px);
+        }
+
+        .usage-steps li {
+            padding-left: 20px;
+        }
+
+        .usage-steps li::before {
+            left: 0;
+            top: 8px;
+        }
+    }
+
+    /* 主应用容器样式调整 */
+    #app {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 200px);
+    }
+</style>
 </body>
 </html>
